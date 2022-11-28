@@ -1,0 +1,631 @@
+#
+# This is a Shiny web application. You can run the application by clicking
+# the 'Run App' button above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
+
+library(shiny)
+library(shinyjs)
+library(lubridate)
+library(shinyTime)
+
+#library(shinyBS)
+
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+  useShinyjs(),
+  titlePanel("OSCAR Lite"),
+    fluidRow(align="center",
+      fileInput("file", label = h3("File input"), multiple = TRUE),
+      fluidRow(align="center",
+        column(6,
+               selectInput("selectActionMeasurement", label = h3("Aktionen Messung"), 
+                           choices = list("NONE"=NULL)),
+               selectInput("selectPowerMeasurement", label = h3("Elektrische Leistung Messung"), 
+                           choices = list("NONE"=NULL), 
+                           ),
+               selectInput("selectHardwareMeasurement", label = h3("Hardware Messung"), 
+                           choices = list("NONE"=NULL), 
+                           ),
+        ),
+        column(6,
+               #selectInput("selectActionBaseline", label = h3("Aktionen Baseline"), 
+              #             choices = list("NONE"=NULL)),
+               timeInput("timeInput", h3("Beginn Baseline-Messung"), value = strptime("12:34:56", "%T"), minute.steps = 1),
+               selectInput("selectPowerBaseline", label = h3("Elektrische Leistung Baseline"), 
+                           choices = list("NONE" = NULL), 
+                           ),
+               selectInput("selectHardwareBaseline", label = h3("Hardware Baseline"), 
+                           choices = list("NONE" = NULL), 
+                           ),
+               
+        ),
+      ),
+      fluidRow(align="center", actionButton(inputId = "ok", label="ok")),
+      hr(),
+      tabsetPanel(type="tabs",
+                  tabPanel("Spalten zuordnen",
+                           fluidRow(column(4,
+                                           h2("Hardware-Datei"),
+                                           selectInput("timestamp", label = h3("Zeitstempel"), 
+                                                       choices = list("NONE"=NULL)),
+                                           selectInput("cpuUsage", label = h3("CPU-Auslastung"), 
+                                                       choices = list("NONE" = NULL), 
+                                           ),
+                                           selectInput("ramUsage", label = h3("RAM-Auslastung"), 
+                                                       choices = list("NONE" = NULL), 
+                                           ),
+                                           selectInput("networkReceived", label = h3("Über Netzwerk empfangen "), 
+                                                       choices = list("NONE"=NULL)),
+                                           selectInput("networkSent", label = h3("Über Netzwerk gesendet"), 
+                                                       choices = list("NONE" = NULL), 
+                                           ),
+                           ),
+                           column(4,
+                                  h2("Elekt. Leistung"),
+                                  selectInput("timestamp2", label = h3("Zeitstempel"), 
+                                              choices = list("NONE"=NULL)),
+                                  selectInput("powerMean", label = h3("Leistung (mittel)"), 
+                                              choices = list("NONE" = NULL), 
+                                  ),
+                           ),
+                           column(4,
+                                  h2("Aktionen"),
+                                  selectInput("timestamp3", label = h3("Zeitstempel"), 
+                                              choices = list("NONE"=NULL)),
+                                  selectInput("actions", label = h3("Aktionen"), 
+                                              choices = list("NONE" = NULL), 
+                                  ),
+                           )
+                           )
+                  ),
+                  tabPanel("Einstellungen",
+                           fluidRow(column(4,
+                             h2("Hardware"),
+                             selectInput("usedSoftware1","Verwendete Software", choices = list("Windows Leistungsüberwachung"=1, "Collectl"=2, "benutzerdefiniert"=3), selected=1), 
+                             textInput("seperator1", "Seperator", value = ","),
+                             textInput("textqual1", "Textqualifizierer", value = '"'),
+                             textInput("decimal1", "Dezimaltrennzeichen", value = "."),
+                             checkboxGroupInput("header1",label="", choices = list("Header vorhanden" = 1), selected = 1),
+                             numericInput("jumpheader1", label = "Zeilen auslassen bis Header", value = 0, min = 0),
+                             #selectInput("encoding1", label="Zeichencodierung", choices = list("Windows Leistungsüberwachung"=1, "Collectl"=2), selected=1),
+                             textInput("timeFormat", "Zeitformat", value = "%m/%d/%Y %H:%M:%OS"),
+                             checkboxGroupInput("collectlformating",label="", choices = list("Datums- und Zeitspalte zusammenführen (nur für Collectl)" = 1), selected=NULL),
+                           ),
+                           column(4,
+                             h2("Elekt. Leistung"),
+                             selectInput("usedSoftware2","Verwendete Software", choices = list("GridVis"=1,"benutzerdefiniert"=3), selected=1), 
+                             textInput("seperator2", "Seperator", value = ";"),
+                             textInput("textqual2", "Textqualifizierer", value = ''),
+                             textInput("decimal2", "Dezimaltrennzeichen", value = ","),
+                             checkboxGroupInput("header2",label="", choices = list("Header vorhanden" = 1), selected = 1),
+                             numericInput("jumpheader2", label = "Zeilen auslassen bis Header", value = 1, min = 0),
+                             #selectInput("encoding1", label="Zeichencodierung", choices = list("Windows Leistungsüberwachung"=1, "Collectl"=2), selected=1),
+                             #checkboxGroupInput("collectlformating",label="", choices = list("Datums- und Zeitspalte zusammenführen (Collectl)" = 1)),
+                             textInput("timeFormat2", "Zeitformat", value = "%d.%m.%y %H:%M:%S"),
+                           ),
+                           column(4,
+                             h2("Aktionen"),
+                             selectInput("usedSoftware3","Verwendete Software", choices = list("Actiona"=1, "benutzerdefiniert"=2), selected=1), 
+                             textInput("seperator3", "Seperator", value = ";"),
+                             textInput("textqual3", "Textqualifizierer", value = ''),
+                             #textInput("decimal3", "Dezimaltrennzeichen", value = "."),
+                             checkboxGroupInput("header3",label="", choices = list("Header vorhanden" = 1)),
+                             numericInput("jumpheader3", label = "Zeilen auslassen bis Header", value = 0, min = 0),
+                             #selectInput("encoding1", label="Zeichencodierung", choices = list("Windows Leistungsüberwachung"=1, "Collectl"=2), selected=1),
+                             #checkboxGroupInput("collectlformating",label="", choices = list("Datums- und Zeitspalte zusammenführen (Collectl)" = 1)),
+                             textInput("timeFormat3", "Zeitformat", value = "%Y-%m-%d %H:%M:%OS"),
+                           )
+                           )
+                  )
+                           ),
+                   fluidRow(align="center", actionButton(inputId = "ok2", label="ok")),
+                  )
+
+      
+)
+
+# Define server logic required to draw a histogram
+
+setup <- function(input){
+  #disable("selectActionBaseline")
+  disable("selectHardwareBaseline")
+  disable("selectPowerBaseline")
+  disable("selectHardwareMeasurement")
+  disable("selectPowerMeasurement")
+  disable("selectActionMeasurement")
+  disable("ok")
+  
+  disable("timestamp")
+  disable("cpuUsage")
+  disable("ramUsage")
+  disable("networkReceived")
+  disable("networkSent")
+  disable("timestamp2")
+  disable("powerMean")
+  disable("timestamp3")
+  disable("actions")
+  
+}
+
+#Falls es sich um eine Collectl-Datei handelt, führe getrennte Datums und Zeitspalte zu einer zusammen (Häkchen gesetzt)
+unionColumn <- function(dataFrameIn){   
+  dataFrameIn$TimeNew <- paste(dataFrameIn[,"#Date"], dataFrameIn$Time, sep=" ")
+  dataFrameIn$Time <- dataFrameIn$TimeNew
+  dataFrameIn[,"#Date"] <- NULL
+  dataFrameIn$TimeNew <- NULL
+  return(dataFrameIn)
+}
+
+
+#Finde heraus welche Spalte welche Bedeutung hat (anhand von Stichwörtern)
+identifyColumns <- function(dfActionMeasurement, dfPowerMeasurement, dfHardwareMeasurement, session){
+  
+  #Speichere Spaltennamen der Messdateien in Variablen
+  columnsAM = colnames(dfActionMeasurement)
+  columnsPM = colnames(dfPowerMeasurement)
+  columnsHM = colnames(dfHardwareMeasurement)
+  
+  print(columnsAM)
+  print(columnsPM)
+  print(columnsHM)
+  
+  
+  columnsHM = append(columnsHM, "Bitte wählen", 0)
+  
+  #Gib die Spaltennamen der Datei den SelectInputs als Auswahlmöglichkeiten (Hardwaremessung)
+  updateSelectInput(session, "timestamp", choices = columnsHM)
+  updateSelectInput(session, "cpuUsage", choices = columnsHM)
+  updateSelectInput(session, "ramUsage", choices = columnsHM)
+  updateSelectInput(session, "networkReceived", choices = columnsHM)
+  updateSelectInput(session, "networkSent", choices = columnsHM)
+
+  #Bestimme anhand von Stichworten welche Auswahlmöglcihkeit die Richtige ist und wähle diese aus... 
+  for(col in columnsHM){
+    if((grepl("zugesicherte|verwendete", col, ignore.case = TRUE) & grepl("arbeitsspeicher", col, ignore.case = TRUE))|col == "[MEM]Used"){
+      updateSelectInput(session, "ramUsage", selected = col)
+    }
+    if((grepl("gesendet", col, ignore.case = TRUE) & grepl("netzwerkschnittstelle", col, ignore.case = TRUE))|col == "[NET]TxKBTot"){
+      updateSelectInput(session, "networkSent", selected = col)
+    }
+    if((grepl("empfangen", col, ignore.case = TRUE) & grepl("netzwerkschnittstelle", col, ignore.case = TRUE))|col == "[NET]RxKBTot"){
+      updateSelectInput(session, "networkReceived", selected = col)
+    }
+    if(grepl("prozessorzeit", col, ignore.case = TRUE)| col == "[CPU]Totl%"){
+      updateSelectInput(session, "cpuUsage", selected = col)
+    }
+    if(grepl("pdh", col, ignore.case = TRUE)| col == "Time"){
+      updateSelectInput(session, "timestamp", selected = col)
+    }
+  }
+  
+  
+  columnsPM = append(columnsPM, "Bitte wählen", 0)
+  #Gib die Spaltennamen der Datei den SelectInputs als Auswahlmöglichkeiten (Leistungsmessung)
+  updateSelectInput(session, "timestamp2", choices = columnsPM, selected = columnsPM[3])
+  updateSelectInput(session, "powerMean", choices = columnsPM, selected = columnsPM[4])
+  
+  
+
+  columnsAM = append(columnsAM, "Bitte wählen", 0)
+  #Gib die Spaltennamen der Datei den SelectInputs als Auswahlmöglichkeiten (Logdatei)
+  updateSelectInput(session, "timestamp3", choices = columnsAM, selected = columnsAM[2])
+  updateSelectInput(session, "actions", choices = columnsAM, selected = columnsAM[3])
+  
+}
+
+
+#forgetDate <- function(dataFrame, timeRow, timeformat){
+#  startTime = as.POSIXlt(paste(dataFrame[1,][timeRow]), tz="", timeformat)
+#  startCentury = as.POSIXlt("01.01.2000 00:00:00", tz="", "%d.%m.%Y %H:%M:%S") 
+  
+ # for(row in 1:nrow(dataFrame)){
+#   current = paste(dataFrame[row,][timeRow])
+#   currentTime = as.POSIXlt(current, tz="",timeformat)
+#   diffDays = round(difftime(currentTime,startCentury, units="days"))
+#   currentTime$mday = currentTime$mday - diffDays
+ #  dataFrame[row,][timeRow] = as.character(currentTime, format=timeformat)
+   
+#  }
+#  print(dataFrame)
+
+#}
+
+newDataframe <- function(actionDatei, input, oldFrame, typeOfMeasurment){
+  startruns = list()
+  startrunsTime = list()
+  
+  stopruns = list()
+  stoprunsTime = list()
+  
+  for(row in 1:nrow(actionDatei)){
+    if(paste(actionDatei[row,][input$actions]) == "startTestrun"){
+      startruns <- append(startruns, actionDatei[row,][input$actions])
+      startrunsTime <- append(startrunsTime, actionDatei[row,][input$timestamp3])
+    }
+    if(paste(actionDatei[row,][input$actions]) == "stopTestrun"){
+      stopruns <- append(stopruns, actionDatei[row,][input$actions])
+      stoprunsTime <- append(stoprunsTime, actionDatei[row,][input$timestamp3])
+    }
+  }
+  
+  print(length(startrunsTime))
+  print(length(stoprunsTime))
+  
+  
+  i = 1
+  timeformatAction = input$timeFormat3
+  if(typeOfMeasurment == "power"){
+    column = input$timestamp2
+    timeformatMeasure = input$timeFormat2
+    
+    starttime = as.POSIXlt(paste(actionDatei[1,][input$timestamp3]), tz="",input$timeFormat3)
+    starttime = as.POSIXlt(as.character(starttime, format="%H:%M:%S"), tz="", "%H:%M:%S")
+    starttimeDay = as.POSIXlt("00:00:00", tz="", "%H:%M:%S")
+    diff = difftime(starttime, starttimeDay, tz="", "secs")
+    print("diff")
+    print(diff)
+    i = diff-100
+    
+  }else if(typeOfMeasurment == "hardware"){
+    column = input$timestamp
+    timeformatMeasure = input$timeFormat
+  }
+  
+  t = 1
+  newFrame = data.frame(matrix(ncol=7, nrow = 0))
+  colnames(newFrame) <- names(oldFrame)
+  written = FALSE
+  seconds = 0
+  while(i <= nrow(oldFrame)){
+    if(t > length(startrunsTime)){
+      break
+    }
+    timeMeasure = as.POSIXlt(paste(oldFrame[i, ][column]), tz="", timeformatMeasure)
+    timeMeasure = as.POSIXlt(as.character(timeMeasure, format="%H%M%S"), tz="", "%H%M%S")
+    #timeMeasureDay = as.POSIXlt(as.character(timeMeasureDay, format="%d:%m:%y"), tz="", "%d:%m:%y")
+    timeStartRun = as.POSIXlt(paste(startrunsTime[t]), tz="", timeformatAction)
+    
+    timeStartRun = as.POSIXlt(as.character(timeStartRun, format="%H%M%S"), tz="", "%H%M%S")
+    #timeStartRunDay = as.POSIXlt(as.character(timeStartRunDay, format="%d:%m:%y"), tz="", "%d:%m:%y")
+    timeStopRun = as.POSIXlt(paste(stoprunsTime[t]), tz="", timeformatAction)
+    timeStopRun = as.POSIXlt(as.character(timeStopRun, format="%H%M%S"), tz="", "%H%M%S")
+    #timeStopRunDay = as.POSIXlt(as.character(timeStopRunDay, format="%d:%m:%y"), tz="", "%d:%m:%y")
+
+    if(timeMeasure >= timeStartRun & timeMeasure < timeStopRun){
+      seconds = seconds + 1
+      if(!written){
+        rememberStart = i
+        written = TRUE
+      }
+    }
+    if(timeMeasure >= timeStopRun){
+      print(i)
+      newFrame <- rbind(newFrame, oldFrame[rememberStart:i,])
+      written=FALSE
+      t = t+1
+      next
+    }
+    i = i+1
+  }
+  secondsPerRun = round(seconds / length(startrunsTime))
+  return(list(newFrame, secondsPerRun))
+}
+
+
+#calculateBaselinePower <- function(dataframe, seconds, input){
+#  timeinput =  unlist(strsplit(paste(input$timeInput), " "))[2]
+#  print(timeinput)
+#  timeStart = as.POSIXlt(paste(timeinput), tz="", "%H:%M:%S")
+#  timeStartDay = as.POSIXlt("00:00:00", tz="", "%H:%M:%S")
+#  diff = as.numeric(difftime(timeStart, timeStartDay, tz="", "secs"))
+#  print(diff)
+  
+  
+#  seconds = as.numeric(seconds)
+#  secondsTenRuns = 10 * seconds
+#  return(dataframe[diff:(diff+secondsTenRuns),])
+#}
+
+calculateBaseline <- function(dataframe, seconds ,input, typeOfMeasurement){
+  
+  if(typeOfMeasurement == "power"){
+    column = input$timestamp2
+    timeformatMeasure = input$timeFormat2
+  }else if(typeOfMeasurement == "hardware"){
+    column = input$timestamp
+    timeformatMeasure = input$timeFormat
+  }
+  
+  print(paste(input$timeInput))
+  timeStart = as.POSIXlt(paste(input$timeInput), tz="", "%Y-%m-%d %H:%M:%S")
+  timeStart = as.POSIXlt(as.character(timeStart, format="%H:%M:%S"), tz="", "%H:%M:%S")
+  rowNumber = 0
+  for(i in 1:nrow(dataframe)){
+    currentTime = as.POSIXlt(paste(dataframe[i,][column]), tz="", timeformatMeasure)
+    currentTime = as.POSIXlt(as.character(currentTime, format="%H:%M:%S"), tz="", "%H:%M:%S")
+
+    if(currentTime >= timeStart){
+      rowNumber = i
+      break
+    }
+  }
+  return(dataframe[rowNumber:(rowNumber+as.numeric(seconds)),])
+}
+
+calculateMeanBaseline<-function(dataframe, typeOfMeasure, input){
+  if(typeOfMeasure == "power"){
+    #mean = mean(lapply(dataframe$input$powerMean, as.numeric))
+    powerMean = input$powerMean
+    print(dataframe$powerMean)
+    mean = sapply(dataframe$input$powerMean, mean)
+    print("Das ist der mean:")
+    print(mean[1])
+    return(mean)
+  }
+  if(typeOfMeasure == "hardware"){
+      mean = list()
+   # mean <- append(mean, mean(lapply(, as.numeric)))
+    #mean <- append(mean, mean(lapply(dataframe$input$ramUsage, as.numeric)))
+    #mean <- append(mean, mean(lapply(dataframe$input$networkReceived, as.numeric)))
+    #mean <- append(mean, mean(lapply(dataframe$input$networkSent, as.numeric)))
+    
+    mean <- append(mean, lapply(dataframe$input$cpuUsage, mean))
+    mean <- append(mean, lapply(dataframe$input$ramUsage, mean))
+    mean <- append(mean, lapply(dataframe$input$networkReceived, mean))
+    mean <- append(mean, lapply(dataframe$input$networkSent, mean))
+    
+    return(mean)
+  }
+  
+}
+
+
+
+
+
+
+server <- function(input, output, session) {
+  
+  setup(input)
+  
+  dfActionBaseline = NULL
+  dfPowerBaseline = NULL
+  dfHardwareBaseline = NULL
+  dfActionMeasurement = NULL
+  dfPowerMeasurement = NULL
+  dfHardwareMeasurement = NULL
+  
+  observeEvent(input$ok, {
+    
+    enable("timestamp")
+    enable("cpuUsage")
+    enable("ramUsage")
+    enable("networkReceived")
+    enable("networkSent")
+    enable("timestamp2")
+    enable("powerMean")
+    enable("timestamp3")
+    enable("actions")
+    
+
+    
+    
+    print("here")
+    print(input$seperator1)
+    
+    #Einlesen der ausgewählten Dateien als Dataframe
+    tryCatch({
+#    if(input$selectActionBaseline != "Bitte wählen"){
+#      dfActionBaseline = read.table(input$selectActionBaseline, check.names = FALSE, comment.char = "", sep=input$seperator3, header=ifelse(!is.null(input$header3), TRUE, FALSE), encoding="UTF-8", skip=as.numeric(input$jumpheader3))
+#      if(is.null(input$header3)){   #Falls kein Header in Datei vorhanden (Header vorhanden nicht gesetzt), dann wird Inhalt der ersten Spalte in den Header des Dataframes kopiert.
+#        names(dfActionBaseline) = dfActionBaseline[1, ]
+#      }
+#    }
+    if(input$selectPowerBaseline != "Bitte wählen"){
+      dfPowerBaseline = read.table(input$selectPowerBaseline, check.names = FALSE, comment.char = "", sep=input$seperator2, header=ifelse(!is.null(input$header2), TRUE, FALSE), dec=input$decimal2, encoding="UTF-8", skip=as.numeric(input$jumpheader2))
+      if(is.null(input$header2)){ #Falls kein Header in Datei vorhanden (Header vorhanden nicht gesetzt), dann wird Inhalt der ersten Spalte in den Header des Dataframes kopiert.
+        names(dfPowerBaseline) = dfPowerBaseline[1, ]
+      }
+      }
+    if(input$selectHardwareBaseline != "Bitte wählen"){
+      dfHardwareBaseline = read.table(input$selectHardwareBaseline, check.names = FALSE, comment.char = "", sep=input$seperator1, header=ifelse(!is.null(input$header1), TRUE, FALSE), dec=input$decimal1,  encoding="UTF-8", skip=as.numeric(input$jumpheader3))
+      if(is.null(input$header1)){ #Falls kein Header in Datei vorhanden (Header vorhanden nicht gesetzt), dann wird Inhalt der ersten Spalte in den Header des Dataframes kopiert.
+        names(dfHardwareBaseline) = dfHardwareBaseline[1, ]
+      }
+      if(!is.null(input$collectlformating)){
+        dfHardwareBaseline = unionColumn(dfHardwareBaseline)
+      }
+    }
+    if(input$selectActionMeasurement != "Bitte wählen"){
+      dfActionMeasurement = read.table(input$selectActionMeasurement, check.names = FALSE,comment.char = "", sep=input$seperator3,header=ifelse(!is.null(input$header3), TRUE, FALSE), encoding="UTF-8", skip=as.numeric(input$jumpheader3))
+      if(is.null(input$header3)){ #Falls kein Header in Datei vorhanden (Header vorhanden nicht gesetzt), dann wird Inhalt der ersten Spalte in den Header des Dataframes kopiert.
+        names(dfActionMeasurement) = dfActionMeasurement[1, ]
+      }
+    }
+    if(input$selectPowerMeasurement != "Bitte wählen"){
+      dfPowerMeasurement = read.table(input$selectPowerMeasurement, check.names = FALSE, comment.char = "", sep=input$seperator2, header=ifelse(!is.null(input$header2), TRUE, FALSE), dec=input$decimal2, encoding="UTF-8", skip=as.numeric(input$jumpheader2))
+      if(is.null(input$header2)){ #Falls kein Header in Datei vorhanden (Header vorhanden nicht gesetzt), dann wird Inhalt der ersten Spalte in den Header des Dataframes kopiert.
+        names(dfPowerMeasurement) = dfPowerMeasurement[1, ]
+      }    
+      }
+    if(input$selectHardwareMeasurement != "Bitte wählen"){
+      dfHardwareMeasurement = read.table(input$selectHardwareMeasurement, check.names = FALSE, sep=input$seperator1, comment.char = "",header=ifelse(!is.null(input$header1), TRUE, FALSE), dec=input$decimal1, encoding="UTF-8", skip=as.numeric(input$jumpheader1))
+      if(is.null(input$header1)){ #Falls kein Header in Datei vorhanden (Header vorhanden nicht gesetzt), dann wird Inhalt der ersten Spalte in den Header des Dataframes kopiert.
+        names(dfHardwareMeasurement) = dfHardwareMeasurement[1, ]
+      }
+      if(!is.null(input$collectlformating)){
+        dfHardwareMeasurement = unionColumn(dfHardwareMeasurement)  #Falls Häkchen (Datums- und Zeitspalte zusammenführen (nur für Collectl)) gesetz, führe Spalten zusammen
+        print.data.frame(dfHardwareMeasurement)
+        print(dfHardwareMeasurement$Time)
+      }
+    }
+    
+    },
+    error=function(cond){
+      if(grepl("invalid multibyte string", cond)){
+        print("Die Codierung Ihrer CSV-Datei muss UTF-8 sein. Unter Windows können Sie die Datei im Editor öffnen und auf 'Speichern unter' klicken. Nun das Dateiformat vor dem Speichern auf UTF-8 stellen. Dieser Fehler kann auftreten, wenn Sie die Datei zuvor mit Excel o.Ä. gespeichert haben.")
+      }else{
+        print(cond)
+      }
+    }
+    )
+    
+    identifyColumns(dfActionMeasurement, dfPowerMeasurement, dfHardwareMeasurement, session)  #Finde heraus welche Spalte welche Bedeutung hat (anhand von Stichwörtern)
+    print.data.frame(dfHardwareMeasurement)
+    print.data.frame(dfHardwareBaseline)
+    print.data.frame(dfPowerBaseline)
+    print.data.frame(dfPowerMeasurement)
+    print.data.frame(dfActionBaseline)
+    print.data.frame(dfActionMeasurement)
+    
+    observeEvent(input$ok2,{
+      print("WHAT")
+      print.data.frame(dfPowerMeasurement)
+      print("inputpowermean")
+      print(input$powerMean)
+      
+      
+      runOnlyHardware = newDataframe(dfActionMeasurement, input, dfHardwareMeasurement, "hardware")
+      runOnlyPower = newDataframe(dfActionMeasurement, input, dfPowerMeasurement, "power")
+      baselineHardwareDataFrame = calculateBaseline(dfHardwareBaseline, runOnlyHardware[2], input, "hardware")
+      baselinePowerDataFrame = calculateBaseline(dfPowerBaseline, runOnlyHardware[2], input, "power")
+      print(calculateMeanBaseline(runOnlyPower[[1]][1], "power", input)[1])
+      
+    })
+  })
+
+  #Hochladen der Dateien
+  observeEvent(input$file, {
+    if(is.null(input$file)){
+      return()  #Brich ab, wenn keine Dateien gewählt
+    }
+    
+#    enable("selectActionBaseline")
+    enable("selectHardwareBaseline")
+    enable("selectPowerBaseline")
+    enable("selectHardwareMeasurement")
+    enable("selectPowerMeasurement")
+    enable("selectActionMeasurement")
+    enable("ok")
+    
+    choices = list()
+    for(fileA in 1:nrow(input$file)){   #Für alle gewählten Dateien...
+      choices[input$file[fileA ,1]] <- input$file[fileA, 4]       #Mappe Dateiname als Key mit Dateipfad als Value 
+    }
+    choices = append(choices, "Bitte wählen", 0)
+
+ #   updateSelectInput(session, "selectActionBaseline", choices = choices)   #Gebe diese Map als Auswahlmöglichkeiten den SelectInputs
+    updateSelectInput(session, "selectPowerBaseline", choices = choices)
+    updateSelectInput(session, "selectHardwareBaseline", choices = choices)
+    updateSelectInput(session, "selectActionMeasurement", choices = choices)
+    updateSelectInput(session, "selectPowerMeasurement", choices = choices)
+    updateSelectInput(session, "selectHardwareMeasurement", choices = choices)
+    
+    for(fileA in 1:nrow(input$file)){     #Für jede gewählte Datei....
+  
+      if(grepl("base|line|leer", input$file[fileA, 1], ignore.case = TRUE)){    #Schaue ob das Wort baseline oder leerlauf im Dateinamen vorkommt...
+        print("I'm in")
+ #       if(grepl("action|aktion|log",input$file[fileA, 1], ignore.case = TRUE)){  #Falls ja: Schaue ob das Wort action, log etc vorkommt...
+  #        updateSelectInput(session, "selectActionBaseline", selected = input$file[fileA, 4])   #Dann selecte den Dateipfad der Datei im Aktion-Baseline-SelectInput-Feld 
+   #     }else 
+        if(grepl("grid|vis|power|elekt|elect|strom",input$file[fileA, 1], ignore.case = TRUE)){
+          updateSelectInput(session, "selectPowerBaseline", selected = input$file[fileA, 4]) #...
+        }else if(grepl("hard|cpu|prozessor|processor|ware|collect|leistungsüberwachung|perfomance|monitor",input$file[fileA, 1], ignore.case = TRUE)){
+          updateSelectInput(session, "selectHardwareBaseline", selected = input$file[fileA, 4])#...
+        }
+      }else{
+        if(grepl("action|aktion|log",input$file[fileA, 1], ignore.case = TRUE)){  #Falls nein: Schaue ob das Wort action, log etc vorkommt...
+          updateSelectInput(session, "selectActionMeasurement", selected = input$file[fileA, 4])   #Dann selecte den Dateipfad der Datei im Aktion-Messung-SelectInput-Feld
+        }else if(grepl("grid|vis|power|elekt|elect|strom",input$file[fileA, 1], ignore.case = TRUE)){
+          updateSelectInput(session, "selectPowerMeasurement", selected = input$file[fileA, 4]) #...
+        }else if(grepl("hard|cpu|prozessor|processor|ware|collect|leistungsüberwachung|performance|monitor",input$file[fileA, 1], ignore.case = TRUE)){
+          updateSelectInput(session, "selectHardwareMeasurement", selected = input$file[fileA, 4]) #...
+        }
+      }
+    }
+  })
+  
+  #
+  observeEvent(input$usedSoftware1,{
+              #Verschiedene Konfiguration für die einzelenen softwares. Später aus Konfig Datei lesen.
+               performanceMonitor <- list("sep"=",", "qual"='"', "decimal"=".", "header"=1, "leaveOut"=0, "timeFormat"="%m/%d/%Y %H:%M:%OS", "concat"=NULL)
+               collectl <- list("sep"=";", "qual"='', "decimal"=".", "header"=1, "leaveOut"=14, "timeFormat"="%Y%m/%d %H:%M:%S", "concat"=1)
+               
+               #Prüfe welche Software vom User gewählt wurde und lege dementsprechend die Konfiguration als usedSoftware fest
+               if(input$usedSoftware1 == 1){
+                 print("in")
+                 usedSoftware <- performanceMonitor
+                 disable("collectlformating")
+               }else if(input$usedSoftware1 == 2){
+                 usedSoftware <- collectl
+                 enable("collectlformating")
+               }else{
+                 usedSoftware <- performanceMonitor
+                 disable("collectlformating")
+               }
+               
+               #Update die Inpu Felder entsprechend der gewählten Software
+               print(usedSoftware["sep"])
+               updateTextInput(session, "seperator1", value = paste(usedSoftware["sep"]))
+               updateTextInput(session, "textqual1", value = paste(usedSoftware["qual"]))
+               updateTextInput(session, "decimal1", value = paste(usedSoftware["decimal"]))
+               updateCheckboxGroupInput(session, "header1", selected=paste(usedSoftware["header"]))
+               updateNumericInput(session, "jumpheader1", value = paste(usedSoftware["leaveOut"]))
+               updateTextInput(session,"timeFormat", value = paste(usedSoftware["timeFormat"]))
+               updateCheckboxGroupInput(session, "collectlformating", selected=paste(usedSoftware["concat"]))
+               
+               })
+  
+  observeEvent(input$usedSoftware2,{
+    gridvis <- list("sep"=";", "qual"='', "decimal"=",", "header"=1, "leaveOut"=1, "timeFormat"="%d.%m.%y %H:%M:%S")
+    
+    
+    if(input$usedSoftware1 == 1){
+      print("in")
+      usedSoftware <- gridvis
+    }else{
+      usedSoftware <- gridvis
+    }
+    
+    print(usedSoftware["sep"])
+    updateTextInput(session, "seperator2", value = paste(usedSoftware["sep"]))
+    updateTextInput(session, "textqual2", value = paste(usedSoftware["qual"]))
+    updateTextInput(session, "decimal2", value = paste(usedSoftware["decimal"]))
+    updateCheckboxGroupInput(session, "header2", selected=paste(usedSoftware["header"]))
+    updateNumericInput(session, "jumpheader2", value = paste(usedSoftware["leaveOut"]))
+    updateTextInput(session,"timeFormat2", value = paste(usedSoftware["timeFormat"]))
+  })
+  
+  
+  observeEvent(input$usedSoftware3,{
+    actiona <- list("sep"=";", "qual"='', "header"=NULL, "leaveOut"=0, "timeFormat"="%Y-%m-%d %H:%M:%OS")
+    
+    if(input$usedSoftware1 == 1){
+      print("in")
+    
+      usedSoftware <- actiona
+    }else{
+      usedSoftware <- actiona
+    }
+    
+    print(usedSoftware["sep"])
+    updateTextInput(session, "seperator3", value = paste(usedSoftware["sep"]))
+    updateTextInput(session, "textqual3", value = paste(usedSoftware["qual"]))
+    #updateTextInput(session, "decimal2", value = paste(usedSoftware["decimal"]))
+    updateCheckboxGroupInput(session, "header3", selected=paste(usedSoftware["header"]))
+    updateNumericInput(session, "jumpheader3", value = paste(usedSoftware["leaveOut"]))
+    updateTextInput(session,"timeFormat3", value = paste(usedSoftware["timeFormat"]))
+  })  
+  
+
+  
+  
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
